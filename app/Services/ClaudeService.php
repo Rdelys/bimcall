@@ -83,6 +83,14 @@ class ClaudeService
                 'turn_count'           => $session->turn_count + 1,
             ]);
 
+            // Mettre à jour le transcript du call_log en temps réel (note vocale progressive)
+            $callLog = \App\Models\CallLog::where('call_sid', $session->call_sid)->first();
+            if ($callLog) {
+                $callLog->update([
+                    'transcript' => $this->buildTranscript($history),
+                ]);
+            }
+
             $shouldHangup = in_array($tag, ['INTERESTED', 'NOT_INTERESTED', 'HANGUP']);
             $result = match($tag) {
                 'INTERESTED'     => 'interested',

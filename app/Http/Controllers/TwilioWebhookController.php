@@ -76,7 +76,10 @@ class CallController extends Controller
         $result = $this->twilio->initiateCall($next);
 
         if ($result['success']) {
-            return back()->with('success', "Appel lancé vers {$next->name ?? $next->phone}");
+            return back()->with(
+                'success',
+                'Appel lancé vers ' . ($next?->name ?? $next?->phone ?? 'Inconnu')
+            );
         }
 
         return back()->with('error', "Échec : {$result['error']}");
