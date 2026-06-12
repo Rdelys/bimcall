@@ -5,6 +5,7 @@ use App\Http\Controllers\CallController;
 use App\Http\Controllers\TwilioWebhookController;
 use App\Http\Controllers\AuthController;
 use App\Http\Middleware\EnsureAuthenticated;
+use App\Http\Controllers\CallNoteController;
 
 // ── Authentification ──────────────────────────────────────────────
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -22,6 +23,10 @@ Route::middleware([EnsureAuthenticated::class])->group(function () {
     Route::get('/logs', [CallController::class, 'logs'])->name('calls.logs');
     Route::get('/api/call-status', [CallController::class, 'callStatus'])->name('call.status.api');
 
+    // Détail d'un appel + notes manuelles
+    Route::get('/calls/{callLog}', [CallNoteController::class, 'show'])->name('calls.show');
+    Route::put('/calls/{callLog}', [CallNoteController::class, 'update'])->name('calls.note.update');
+    
     Route::get('/contacts', [CallController::class, 'contacts'])->name('contacts.index');
     Route::post('/contacts/{contact}/reset', [CallController::class, 'resetContact'])->name('contacts.reset');
     Route::delete('/contacts/{contact}', [CallController::class, 'deleteContact'])->name('contacts.delete');

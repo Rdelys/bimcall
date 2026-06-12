@@ -717,6 +717,12 @@
         <a href="{{ route('prompts.index') }}" class="{{ request()->routeIs('prompts.*') ? 'active' : '' }}">
             <i class="fas fa-robot"></i> Offres / IA
         </a>
+        @php $lastCall = \App\Models\CallLog::latest()->first(); @endphp
+        @if($lastCall)
+        <a href="{{ route('calls.show', $lastCall) }}" class="{{ request()->routeIs('calls.show') ? 'active' : '' }}">
+            <i class="fas fa-phone-volume"></i> Dernier appel
+        </a>
+        @endif
     </div>
     <form action="{{ route('logout') }}" method="POST" style="margin:0">
         @csrf
