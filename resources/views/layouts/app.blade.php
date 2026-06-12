@@ -718,6 +718,12 @@
             <i class="fas fa-robot"></i> Offres / IA
         </a>
     </div>
+    <form action="{{ route('logout') }}" method="POST" style="margin:0">
+        @csrf
+        <button type="submit" class="btn btn-gray btn-sm js-no-loading" style="background:rgba(255,255,255,0.08);color:#cbd5e1;border:1px solid rgba(255,255,255,0.1)">
+            <i class="fas fa-sign-out-alt"></i> Déconnexion
+        </button>
+    </form>
 </nav>
 
 <div class="container">
@@ -748,11 +754,14 @@
 @yield('scripts')
 
 <script>
-    // Add loading state to buttons when clicked
     document.addEventListener('DOMContentLoaded', function() {
         const buttons = document.querySelectorAll('.btn');
         buttons.forEach(button => {
             button.addEventListener('click', function(e) {
+                if (this.classList.contains('js-no-loading')) {
+                    return; // ne pas désactiver ce bouton, laisser le submit se faire normalement
+                }
+
                 if (this.type === 'submit' && this.form && !this.form.checkValidity()) {
                     return;
                 }
@@ -763,7 +772,6 @@
                     this.classList.add('loading');
                     this.disabled = true;
                     
-                    // Reset after 10 seconds (in case of error or slow network)
                     setTimeout(() => {
                         if (this.disabled) {
                             this.innerHTML = originalHTML;

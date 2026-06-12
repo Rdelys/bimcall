@@ -44,6 +44,10 @@ return [
     'anthropic' => [
         'key' => env('ANTHROPIC_API_KEY'),
     ],
+
+    'app_auth' => [
+        'code' => env('AUTH_CODE', '234001'),
+    ],
     
 
 ];
