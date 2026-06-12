@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>BimCall — @yield('title', 'Accueil')</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.3/cdn.min.js" defer></script>
     <style>
         * { 
@@ -55,6 +56,14 @@
             letter-spacing: -0.3px;
         }
         
+        nav .brand i {
+            margin-right: 8px;
+            background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
         nav a { 
             color: #cbd5e1; 
             text-decoration: none; 
@@ -64,6 +73,13 @@
             border-bottom: 3px solid transparent; 
             transition: all 0.25s ease;
             position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        nav a i {
+            font-size: 14px;
         }
         
         nav a:hover { 
@@ -91,6 +107,17 @@
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        h1 i {
+            background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-size: clamp(18px, 5vw, 26px);
         }
         
         h2 { 
@@ -99,6 +126,14 @@
             margin-bottom: 16px; 
             color: #334155; 
             letter-spacing: -0.2px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        h2 i {
+            color: #7c3aed;
+            font-size: clamp(12px, 4vw, 16px);
         }
 
         /* CARDS RESPONSIVE */
@@ -167,6 +202,14 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        
+        .stat-card .label i {
+            font-size: 12px;
         }
 
         /* ALERTS RESPONSIVE */
@@ -178,6 +221,13 @@
             font-weight: 500;
             backdrop-filter: blur(10px);
             animation: slideIn 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .alert i {
+            font-size: 16px;
         }
         
         @keyframes slideIn {
@@ -249,13 +299,19 @@
         }
         
         label { 
-            display: block; 
+            display: flex;
+            align-items: center;
+            gap: 6px;
             font-size: 12px; 
             font-weight: 700; 
             color: #475569; 
             margin-bottom: 6px; 
             text-transform: uppercase; 
             letter-spacing: 0.5px; 
+        }
+        
+        label i {
+            font-size: 11px;
         }
         
         .field { 
@@ -277,6 +333,10 @@
             align-items: center; 
             gap: 8px;
             letter-spacing: 0.3px;
+        }
+        
+        .btn i {
+            font-size: 14px;
         }
         
         .btn-primary  { 
@@ -326,8 +386,18 @@
             font-size: 12px; 
         }
         
+        .btn-sm i {
+            font-size: 11px;
+        }
+        
         .btn:active {
             transform: translateY(0);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
 
         /* TABLE RESPONSIVE */
@@ -355,6 +425,11 @@
             background: #f8fafc;
         }
         
+        th i {
+            margin-right: 6px;
+            font-size: 11px;
+        }
+        
         td { 
             padding: 14px 12px; 
             border-bottom: 1px solid #f1f5f9; 
@@ -370,8 +445,14 @@
             border-radius: 20px; 
             font-size: 12px; 
             font-weight: 700; 
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
             letter-spacing: 0.3px;
+        }
+        
+        .badge i {
+            font-size: 10px;
         }
         
         .badge-pending  { 
@@ -421,6 +502,12 @@
         }
 
         /* RESPONSIVE BREAKPOINTS */
+        @media (max-width: 1024px) {
+            .stat-grid {
+                gap: 16px;
+            }
+        }
+        
         @media (max-width: 768px) {
             nav {
                 flex-direction: column;
@@ -430,6 +517,8 @@
             .nav-left {
                 width: 100%;
                 justify-content: center;
+                flex-wrap: wrap;
+                gap: 4px;
             }
             
             nav .brand {
@@ -440,11 +529,12 @@
             }
             
             nav a {
-                padding: 12px 12px;
+                padding: 10px 12px;
                 font-size: 13px;
             }
             
             .stat-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
                 gap: 12px;
             }
             
@@ -461,6 +551,25 @@
                 width: 100%;
                 justify-content: center;
             }
+            
+            .campaign-actions {
+                flex-direction: column;
+            }
+            
+            .campaign-actions form {
+                width: 100%;
+            }
+        }
+        
+        @media (max-width: 640px) {
+            .table-responsive {
+                margin: 0 -16px;
+                padding: 0 16px;
+            }
+            
+            table {
+                min-width: 550px;
+            }
         }
         
         @media (max-width: 480px) {
@@ -472,8 +581,16 @@
                 padding: 16px;
             }
             
+            .stat-card {
+                padding: 14px 12px;
+            }
+            
             .stat-card .value {
-                font-size: 28px;
+                font-size: 24px;
+            }
+            
+            .stat-card .label {
+                font-size: 10px;
             }
             
             nav a {
@@ -481,14 +598,31 @@
                 font-size: 12px;
             }
             
+            nav a i {
+                font-size: 11px;
+            }
+            
             th, td {
                 padding: 10px 8px;
                 font-size: 12px;
             }
             
+            th {
+                font-size: 10px;
+            }
+            
             .badge {
                 font-size: 10px;
                 padding: 3px 8px;
+            }
+            
+            .alert {
+                padding: 10px 14px;
+                font-size: 12px;
+            }
+            
+            .alert i {
+                font-size: 14px;
             }
         }
         
@@ -535,32 +669,77 @@
             opacity: 0.6;
             pointer-events: none;
         }
+        
+        /* ANIMATIONS */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .card {
+            animation: fadeIn 0.4s ease;
+        }
+        
+        /* HOVER EFFECTS */
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        /* DISABLED STATE */
+        button:disabled,
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
     </style>
 </head>
 <body>
 
 <nav>
     <div class="nav-left">
-        <span class="brand">📞 BimCall</span>
-        <a href="{{ route('home') }}" class="{{ request()->routeIs('home') ? 'active' : '' }}">Dashboard</a>
-        <a href="{{ route('contacts.index') }}" class="{{ request()->routeIs('contacts.*') ? 'active' : '' }}">Contacts</a>
-        <a href="{{ route('calls.logs') }}" class="{{ request()->routeIs('calls.logs') ? 'active' : '' }}">Historique</a>
-        <a href="{{ route('prompts.index') }}" class="{{ request()->routeIs('prompts.*') ? 'active' : '' }}">Offres / IA</a>
+        <span class="brand"><i class="fas fa-phone-alt"></i> BimCall</span>
+        <a href="{{ route('home') }}" class="{{ request()->routeIs('home') ? 'active' : '' }}">
+            <i class="fas fa-chart-line"></i> Dashboard
+        </a>
+        <a href="{{ route('contacts.index') }}" class="{{ request()->routeIs('contacts.*') ? 'active' : '' }}">
+            <i class="fas fa-address-book"></i> Contacts
+        </a>
+        <a href="{{ route('calls.logs') }}" class="{{ request()->routeIs('calls.logs') ? 'active' : '' }}">
+            <i class="fas fa-history"></i> Historique
+        </a>
+        <a href="{{ route('prompts.index') }}" class="{{ request()->routeIs('prompts.*') ? 'active' : '' }}">
+            <i class="fas fa-robot"></i> Offres / IA
+        </a>
     </div>
 </nav>
 
 <div class="container">
     @if(session('success'))
-        <div class="alert alert-success">✅ {{ session('success') }}</div>
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i> {{ session('success') }}
+        </div>
     @endif
     @if(session('error'))
-        <div class="alert alert-error">❌ {{ session('error') }}</div>
+        <div class="alert alert-error">
+            <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
+        </div>
     @endif
     @if(session('warning'))
-        <div class="alert alert-warning">⚠️ {{ session('warning') }}</div>
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i> {{ session('warning') }}
+        </div>
     @endif
     @if(session('info'))
-        <div class="alert alert-info">ℹ️ {{ session('info') }}</div>
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> {{ session('info') }}
+        </div>
     @endif
 
     @yield('content')
@@ -574,16 +753,24 @@
         const buttons = document.querySelectorAll('.btn');
         buttons.forEach(button => {
             button.addEventListener('click', function(e) {
+                if (this.type === 'submit' && this.form && !this.form.checkValidity()) {
+                    return;
+                }
+                
                 if (this.type === 'submit' || this.classList.contains('btn-primary')) {
-                    const originalText = this.innerHTML;
-                    this.innerHTML = '⏳ Chargement...';
+                    const originalHTML = this.innerHTML;
+                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Chargement...';
                     this.classList.add('loading');
+                    this.disabled = true;
                     
-                    // Reset after 5 seconds (in case of error)
+                    // Reset after 10 seconds (in case of error or slow network)
                     setTimeout(() => {
-                        this.innerHTML = originalText;
-                        this.classList.remove('loading');
-                    }, 5000);
+                        if (this.disabled) {
+                            this.innerHTML = originalHTML;
+                            this.classList.remove('loading');
+                            this.disabled = false;
+                        }
+                    }, 10000);
                 }
             });
         });
