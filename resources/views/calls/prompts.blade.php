@@ -69,7 +69,15 @@
     <form action="{{ route('prompts.save') }}" method="POST">
         @csrf
         <input type="hidden" name="id" id="prompt-id" value="">
-
+@if ($errors->any())
+    <div class="alert alert-danger">
+        <ul>
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
         <div class="form-group">
             <label><i class="fas fa-tag"></i> Nom de l'offre</label>
             <input type="text" name="name" id="prompt-name" placeholder="Ex : Offre internet fibre - Janvier 2026" required>
