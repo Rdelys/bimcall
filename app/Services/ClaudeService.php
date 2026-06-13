@@ -34,6 +34,7 @@ class ClaudeService
         // Système prompt avec instructions spéciales pour appel téléphonique
         $systemPrompt = $prompt->system_prompt . "\n\n"
             . "INSTRUCTIONS IMPORTANTES :\n"
+            . "- Tu réponds TOUJOURS en français, quelle que soit la langue parlée par l'interlocuteur.\n"
             . "- Tu réponds uniquement à l'oral, phrases courtes et naturelles.\n"
             . "- Si la personne est intéressée, dis-lui que tu vas la recontacter et conclus l'appel.\n"
             . "- Si la personne n'est pas intéressée ou veut raccrocher, remercie-la poliment et raccroche.\n"

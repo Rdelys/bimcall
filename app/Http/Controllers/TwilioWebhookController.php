@@ -5,216 +5,158 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Contact;
 use App\Models\CallLog;
-use App\Models\OfferPrompt;
+use App\Models\CallSession;
 use App\Services\TwilioService;
+use App\Services\ClaudeService;
+use Twilio\TwiML\VoiceResponse;
 
-class CallController extends Controller
+class TwilioWebhookController extends Controller
 {
-    public function __construct(protected TwilioService $twilio) {}
+    public function __construct(
+        protected TwilioService $twilio,
+        protected ClaudeService $claude
+    ) {}
 
     /**
-     * Dashboard principal
+     * Webhook : appel décroché — lancer le message d'ouverture
      */
-    public function index()
+    public function answer(Request $request)
     {
-        $stats = [
-            'total'        => Contact::count(),
-            'pending'      => Contact::where('status', 'pending')->count(),
-            'done'         => Contact::where('status', 'done')->count(),
-            'calling'      => Contact::where('status', 'calling')->count(),
-            'interested'   => CallLog::where('result', 'interested')->count(),
-            'voicemail'    => CallLog::where('result', 'voicemail')->count(),
-        ];
+        $callSid = $request->input('CallSid');
+        $to      = $request->input('To');
 
-        $recentCalls = CallLog::with('contact')->latest()->limit(10)->get();
-        $activePrompt = OfferPrompt::getActive();
+        $log     = CallLog::where('call_sid', $callSid)->first();
+        $contact = $log ? $log->contact : Contact::where('phone', $to)->latest()->first();
 
-        return view('calls.index', compact('stats', 'recentCalls', 'activePrompt'));
+        if (!$contact) {
+            return response($this->twilio->buildHangupTwiml('Désolé, une erreur est survenue.'), 200)
+                ->header('Content-Type', 'text/xml');
+        }
+
+        $twiml = $this->twilio->buildAnswerTwiml($callSid, $contact);
+
+        return response($twiml, 200)->header('Content-Type', 'text/xml');
     }
 
     /**
-     * Lancer un appel unique
+     * Webhook : AMD — détection messagerie/humain
      */
-    public function call(Request $request)
+    public function amd(Request $request)
     {
-        $request->validate([
-            'phone' => 'required|string',
-            'name'  => 'nullable|string',
-        ]);
+        $callSid    = $request->input('CallSid');
+        $answeredBy = $request->input('AnsweredBy'); // human / machine_start / fax / unknown
 
-        // Créer ou trouver le contact
-        $contact = Contact::firstOrCreate(
-            ['phone' => $request->phone],
-            ['name' => $request->name, 'status' => 'pending']
-        );
+        $log = CallLog::where('call_sid', $callSid)->first();
 
-        $result = $this->twilio->initiateCall($contact);
+        if (in_array($answeredBy, ['machine_start', 'machine_end_beep', 'machine_end_silence', 'machine_end_other', 'fax'])) {
+            // C'est une messagerie
+            if ($log) {
+                $log->update(['result' => 'voicemail']);
+                $log->contact->update(['status' => 'done']);
+            }
 
-        if ($result['success']) {
-            return back()->with('success', "Appel lancé vers {$contact->phone} (SID: {$result['call_sid']})");
+            // Rediriger vers la gestion messagerie
+            try {
+                $this->twilio->buildVoicemailTwiml($callSid);
+            } catch (\Exception $e) {}
         }
 
-        return back()->with('error', "Échec : {$result['error']}");
+        return response('', 204);
     }
 
     /**
-     * Lancer le prochain appel de la liste
+     * Webhook : réponse du prospect — traitement IA
      */
-    public function callNext()
+    public function respond(Request $request)
     {
-        // Vérifier qu'aucun appel n'est en cours
-        if (Contact::where('status', 'calling')->exists()) {
-            return back()->with('warning', 'Un appel est déjà en cours. Attendez qu\'il se termine.');
+        $callSid    = $request->input('CallSid');
+        $speechText = $request->input('SpeechResult', '');
+
+        $session = CallSession::where('call_sid', $callSid)->first();
+        $log     = CallLog::where('call_sid', $callSid)->first();
+
+        if (!$session) {
+            return response($this->twilio->buildHangupTwiml('Désolé, session introuvable.'), 200)
+                ->header('Content-Type', 'text/xml');
         }
 
-        $next = Contact::where('status', 'pending')->orderBy('id')->first();
-
-        if (!$next) {
-            return back()->with('info', 'Aucun contact en attente.');
+        // Si pas de parole détectée
+        if (empty($speechText)) {
+            $speechText = '[silence]';
         }
 
-        $result = $this->twilio->initiateCall($next);
+        // Générer la réponse IA
+        [$aiResponse, $shouldHangup, $result] = $this->claude->generateResponse($session, $speechText);
 
-        if ($result['success']) {
-            return back()->with(
-                'success',
-                'Appel lancé vers ' . ($next?->name ?? $next?->phone ?? 'Inconnu')
-            );
+        // Mettre à jour le log
+        if ($log && $result) {
+            $transcript = $this->claude->buildTranscript($session->fresh()->conversation_history ?? []);
+            $log->update([
+                'result'     => $result,
+                'transcript' => $transcript,
+            ]);
         }
 
-        return back()->with('error', "Échec : {$result['error']}");
-    }
-
-    /**
-     * Import depuis Excel/CSV
-     */
-    public function import(Request $request)
-    {
-        $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv',
-        ]);
-
-        $file = $request->file('file');
-        $ext  = $file->getClientOriginalExtension();
-        $imported = 0;
-
-        if ($ext === 'csv') {
-            $rows = array_map('str_getcsv', file($file->getRealPath()));
-            $header = array_map('strtolower', array_shift($rows));
-            foreach ($rows as $row) {
-                $data = array_combine($header, $row);
-                $phone = $data['phone'] ?? $data['telephone'] ?? $data['numero'] ?? $row[0] ?? null;
-                if ($phone) {
-                    Contact::firstOrCreate(['phone' => trim($phone)], [
-                        'name'    => $data['name'] ?? $data['nom'] ?? null,
-                        'company' => $data['company'] ?? $data['entreprise'] ?? null,
-                        'status'  => 'pending',
-                    ]);
-                    $imported++;
+        if ($shouldHangup) {
+            // Fin de conversation
+            if ($log) {
+                $log->contact->update(['status' => 'done']);
+                if (!$result && $log->result === 'no_answer') {
+                    $log->update(['result' => 'answered']);
                 }
             }
+            $twiml = $this->twilio->buildHangupTwiml($aiResponse);
         } else {
-            // Excel via PhpSpreadsheet (inclus dans maatwebsite/excel)
-            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getRealPath());
-            $sheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
-            $header = array_map('strtolower', array_shift($sheet));
-            foreach ($sheet as $row) {
-                $data = array_combine($header, $row);
-                $phone = $data['phone'] ?? $data['telephone'] ?? $data['numero'] ?? $row[0] ?? null;
-                if ($phone) {
-                    Contact::firstOrCreate(['phone' => trim($phone)], [
-                        'name'    => $data['name'] ?? $data['nom'] ?? null,
-                        'company' => $data['company'] ?? $data['entreprise'] ?? null,
-                        'status'  => 'pending',
-                    ]);
-                    $imported++;
-                }
-            }
+            // Continuer la conversation
+            $response = new VoiceResponse();
+            $gather = $response->gather([
+                'input'         => 'speech',
+                'action'        => route('twilio.voice.respond'),
+                'language'      => 'fr-FR',
+                'speechTimeout' => 'auto',
+                'timeout'       => 5,
+            ]);
+            $gather->say($aiResponse, ['language' => 'fr-FR', 'voice' => 'Polly.Léa-Neural']);
+
+            // Si silence après le gather
+            $response->say("Je suis toujours là. Avez-vous des questions ?", ['language' => 'fr-FR', 'voice' => 'Polly.Léa-Neural']);
+            $response->redirect(route('twilio.voice.respond'), ['method' => 'POST']);
+            $twiml = (string) $response;
         }
 
-        return back()->with('success', "$imported contacts importés avec succès.");
+        return response($twiml, 200)->header('Content-Type', 'text/xml');
     }
 
     /**
-     * Voir les logs d'appels
+     * Webhook : statut de l'appel (completed, no-answer, busy, failed)
      */
-    public function logs()
+    public function status(Request $request)
     {
-        $logs = CallLog::with('contact')->latest()->paginate(20);
-        return view('calls.logs', compact('logs'));
-    }
+        $callSid    = $request->input('CallSid');
+        $callStatus = $request->input('CallStatus');
+        $duration   = (int) $request->input('CallDuration', 0);
 
-    /**
-     * Liste des contacts
-     */
-    public function contacts()
-    {
-        $contacts = Contact::with('callLogs')->latest()->paginate(20);
-        return view('contacts.index', compact('contacts'));
-    }
-
-    /**
-     * Réinitialiser un contact en pending
-     */
-    public function resetContact(Contact $contact)
-    {
-        $contact->update(['status' => 'pending']);
-        return back()->with('success', 'Contact remis en attente.');
-    }
-
-    /**
-     * Supprimer un contact
-     */
-    public function deleteContact(Contact $contact)
-    {
-        $contact->delete();
-        return back()->with('success', 'Contact supprimé.');
-    }
-
-    /**
-     * Gérer les prompts d'offre
-     */
-    public function prompts()
-    {
-        $prompts = OfferPrompt::all();
-        return view('calls.prompts', compact('prompts'));
-    }
-
-    public function savePrompt(Request $request)
-    {
-        $request->validate([
-            'name'            => 'required|string',
-            'system_prompt'   => 'required|string',
-            'opening_message' => 'required|string',
-        ]);
-
-        if ($request->has('id') && $request->id) {
-            $prompt = OfferPrompt::findOrFail($request->id);
-            $prompt->update($request->only('name', 'system_prompt', 'opening_message'));
-        } else {
-            OfferPrompt::create($request->only('name', 'system_prompt', 'opening_message'));
+        $log = CallLog::where('call_sid', $callSid)->first();
+        if (!$log) {
+            return response('', 204);
         }
 
-        return back()->with('success', 'Prompt sauvegardé.');
-    }
+        // Mettre à jour la durée
+        $log->update(['duration' => $duration]);
 
-    public function activatePrompt(OfferPrompt $prompt)
-    {
-        OfferPrompt::where('id', '!=', $prompt->id)->update(['is_active' => false]);
-        $prompt->update(['is_active' => true]);
-        return back()->with('success', "Prompt « {$prompt->name} » activé.");
-    }
+        // Si statut terminal sans résultat défini
+        if ($callStatus === 'no-answer' && $log->result === 'no_answer') {
+            $log->contact->update(['status' => 'done']);
+        } elseif ($callStatus === 'busy') {
+            $log->update(['result' => 'busy']);
+            $log->contact->update(['status' => 'done']);
+        } elseif ($callStatus === 'failed') {
+            $log->update(['result' => 'failed']);
+            $log->contact->update(['status' => 'failed']);
+        } elseif ($callStatus === 'completed') {
+            $log->contact->update(['status' => 'done']);
+        }
 
-    /**
-     * API : statut appel en cours (polling AJAX)
-     */
-    public function callStatus()
-    {
-        $calling = Contact::where('status', 'calling')->with(['callLogs' => fn($q) => $q->latest()->limit(1)])->first();
-        return response()->json([
-            'calling'     => $calling ? $calling->only('id', 'name', 'phone') : null,
-            'pending'     => Contact::where('status', 'pending')->count(),
-            'lastResult'  => CallLog::latest()->first()?->only('result', 'duration', 'notes'),
-        ]);
+        return response('', 204);
     }
 }
