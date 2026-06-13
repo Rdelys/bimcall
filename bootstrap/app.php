@@ -16,6 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'auth.code' => EnsureAuthenticated::class,
         ]);
+
+        // Exclure les webhooks Twilio de la vérification CSRF
+        $middleware->validateCsrfTokens(except: [
+            'twilio/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
