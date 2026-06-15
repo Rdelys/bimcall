@@ -768,23 +768,24 @@
                     return; // ne pas désactiver ce bouton, laisser le submit se faire normalement
                 }
 
-                if (this.type === 'submit' && this.form && !this.form.checkValidity()) {
-                    return;
-                }
-                
                 if (this.type === 'submit' || this.classList.contains('btn-primary')) {
                     const originalHTML = this.innerHTML;
-                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Chargement...';
-                    this.classList.add('loading');
-                    this.disabled = true;
-                    
+                    const btn = this;
+
+                    // Laisser le navigateur traiter la soumission AVANT de désactiver le bouton
                     setTimeout(() => {
-                        if (this.disabled) {
-                            this.innerHTML = originalHTML;
-                            this.classList.remove('loading');
-                            this.disabled = false;
-                        }
-                    }, 10000);
+                        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Chargement...';
+                        btn.classList.add('loading');
+                        btn.disabled = true;
+
+                        setTimeout(() => {
+                            if (btn.disabled) {
+                                btn.innerHTML = originalHTML;
+                                btn.classList.remove('loading');
+                                btn.disabled = false;
+                            }
+                        }, 10000);
+                    }, 0);
                 }
             });
         });

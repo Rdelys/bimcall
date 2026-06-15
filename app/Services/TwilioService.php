@@ -104,7 +104,7 @@ class TwilioService
             'speechTimeout' => 'auto',
             'timeout'      => 5,
         ]);
-        $gather->say($openingText, ['language' => 'fr-FR', 'voice' => 'Polly.Lea']);
+        $gather->say($openingText, ['language' => 'fr-FR', 'voice' => 'Polly.Léa-Neural']);
 
         // Si pas de réponse après gather
         $response->redirect(route('twilio.voice.respond'), ['method' => 'POST']);
