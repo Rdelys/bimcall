@@ -6,11 +6,11 @@ use Illuminate\Http\Request;
 use App\Models\Contact;
 use App\Models\CallLog;
 use App\Models\OfferPrompt;
-use App\Services\TwilioService;
+use App\Services\TelnyxService;
 
 class CallController extends Controller
 {
-    public function __construct(protected TwilioService $twilio) {}
+    public function __construct(protected TelnyxService $telnyx) {}
 
     /**
      * Dashboard principal
@@ -42,16 +42,15 @@ class CallController extends Controller
             'name'  => 'nullable|string',
         ]);
 
-        // Créer ou trouver le contact
         $contact = Contact::firstOrCreate(
             ['phone' => $request->phone],
             ['name' => $request->name, 'status' => 'pending']
         );
 
-        $result = $this->twilio->initiateCall($contact);
+        $result = $this->telnyx->initiateCall($contact);
 
         if ($result['success']) {
-            return back()->with('success', "Appel lancé vers {$contact->phone} (SID: {$result['call_sid']})");
+            return back()->with('success', "Appel lancé vers {$contact->phone} (ID: {$result['call_sid']})");
         }
 
         return back()->with('error', "Échec : {$result['error']}");
@@ -62,7 +61,6 @@ class CallController extends Controller
      */
     public function callNext()
     {
-        // Vérifier qu'aucun appel n'est en cours
         if (Contact::where('status', 'calling')->exists()) {
             return back()->with('warning', 'Un appel est déjà en cours. Attendez qu\'il se termine.');
         }
@@ -73,13 +71,14 @@ class CallController extends Controller
             return back()->with('info', 'Aucun contact en attente.');
         }
 
-        $result = $this->twilio->initiateCall($next);
+        $result = $this->telnyx->initiateCall($next);
 
         if ($result['success']) {
-return back()->with(
-    'success',
-    'Appel lancé vers ' . ($next->name ?? $next->phone)
-);        }
+            return back()->with(
+                'success',
+                'Appel lancé vers ' . ($next?->name ?? $next?->phone ?? 'Inconnu')
+            );
+        }
 
         return back()->with('error', "Échec : {$result['error']}");
     }
@@ -113,7 +112,6 @@ return back()->with(
                 }
             }
         } else {
-            // Excel via PhpSpreadsheet (inclus dans maatwebsite/excel)
             $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getRealPath());
             $sheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
             $header = array_map('strtolower', array_shift($sheet));
@@ -134,45 +132,30 @@ return back()->with(
         return back()->with('success', "$imported contacts importés avec succès.");
     }
 
-    /**
-     * Voir les logs d'appels
-     */
     public function logs()
     {
         $logs = CallLog::with('contact')->latest()->paginate(20);
         return view('calls.logs', compact('logs'));
     }
 
-    /**
-     * Liste des contacts
-     */
     public function contacts()
     {
         $contacts = Contact::with('callLogs')->latest()->paginate(20);
         return view('contacts.index', compact('contacts'));
     }
 
-    /**
-     * Réinitialiser un contact en pending
-     */
     public function resetContact(Contact $contact)
     {
         $contact->update(['status' => 'pending']);
         return back()->with('success', 'Contact remis en attente.');
     }
 
-    /**
-     * Supprimer un contact
-     */
     public function deleteContact(Contact $contact)
     {
         $contact->delete();
         return back()->with('success', 'Contact supprimé.');
     }
 
-    /**
-     * Gérer les prompts d'offre
-     */
     public function prompts()
     {
         $prompts = OfferPrompt::all();
@@ -204,9 +187,6 @@ return back()->with(
         return back()->with('success', "Prompt « {$prompt->name} » activé.");
     }
 
-    /**
-     * API : statut appel en cours (polling AJAX)
-     */
     public function callStatus()
     {
         $calling = Contact::where('status', 'calling')->with(['callLogs' => fn($q) => $q->latest()->limit(1)])->first();

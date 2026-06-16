@@ -40,6 +40,12 @@ return [
         'auth_token'   => env('TWILIO_AUTH_TOKEN'),
         'phone_number' => env('TWILIO_PHONE_NUMBER'),
     ],
+    
+    'telnyx' => [
+        'api_key'       => env('TELNYX_API_KEY'),
+        'connection_id' => env('TELNYX_CONNECTION_ID'),
+        'phone_number'  => env('TELNYX_PHONE_NUMBER'),
+    ],
  
     'anthropic' => [
         'key' => env('ANTHROPIC_API_KEY'),

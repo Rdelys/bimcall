@@ -4,12 +4,13 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use App\Models\CallSession;
+use App\Models\CallLog;
 use App\Models\OfferPrompt;
 
 class ClaudeService
 {
     protected string $apiKey;
-    protected string $model = 'claude-sonnet-4-20250514';
+    protected string $model = 'claude-sonnet-4-6';
 
     public function __construct()
     {
@@ -27,11 +28,9 @@ class ClaudeService
             return ['Je suis désolé, une erreur est survenue. Au revoir.', true, 'failed'];
         }
 
-        // Construire l'historique
         $history = $session->conversation_history ?? [];
         $history[] = ['role' => 'user', 'content' => $userSpeech];
 
-        // Système prompt avec instructions spéciales pour appel téléphonique
         $systemPrompt = $prompt->system_prompt . "\n\n"
             . "INSTRUCTIONS IMPORTANTES :\n"
             . "- Tu réponds uniquement à l'oral, phrases courtes et naturelles.\n"
@@ -59,7 +58,6 @@ class ClaudeService
 
             $content = $response->json('content.0.text', '');
 
-            // Parser le tag et le texte
             $tag = 'CONTINUE';
             $tags = ['[CONTINUE]', '[INTERESTED]', '[NOT_INTERESTED]', '[HANGUP]'];
             foreach ($tags as $t) {
@@ -70,21 +68,19 @@ class ClaudeService
                 }
             }
 
-            // Si trop de tours, forcer la fin
             if ($session->turn_count >= 4 && $tag === 'CONTINUE') {
                 $tag = 'HANGUP';
                 $content = "Je vous remercie pour votre temps. N'hésitez pas à nous contacter si vous souhaitez plus d'informations. Bonne journée !";
             }
 
-            // Sauvegarder dans l'historique
             $history[] = ['role' => 'assistant', 'content' => $content];
             $session->update([
                 'conversation_history' => $history,
                 'turn_count'           => $session->turn_count + 1,
             ]);
 
-            // Mettre à jour le transcript du call_log en temps réel (note vocale progressive)
-            $callLog = \App\Models\CallLog::where('call_sid', $session->call_sid)->first();
+            // Mettre à jour le transcript du call_log en temps réel
+            $callLog = CallLog::where('call_sid', $session->call_sid)->first();
             if ($callLog) {
                 $callLog->update([
                     'transcript' => $this->buildTranscript($history),

@@ -2,10 +2,10 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CallController;
-use App\Http\Controllers\TwilioWebhookController;
+use App\Http\Controllers\TelnyxWebhookController;
 use App\Http\Controllers\AuthController;
-use App\Http\Middleware\EnsureAuthenticated;
 use App\Http\Controllers\CallNoteController;
+use App\Http\Middleware\EnsureAuthenticated;
 
 // ── Authentification ──────────────────────────────────────────────
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -26,7 +26,7 @@ Route::middleware([EnsureAuthenticated::class])->group(function () {
     // Détail d'un appel + notes manuelles
     Route::get('/calls/{callLog}', [CallNoteController::class, 'show'])->name('calls.show');
     Route::put('/calls/{callLog}', [CallNoteController::class, 'update'])->name('calls.note.update');
-    
+
     Route::get('/contacts', [CallController::class, 'contacts'])->name('contacts.index');
     Route::post('/contacts/{contact}/reset', [CallController::class, 'resetContact'])->name('contacts.reset');
     Route::delete('/contacts/{contact}', [CallController::class, 'deleteContact'])->name('contacts.delete');
@@ -37,10 +37,7 @@ Route::middleware([EnsureAuthenticated::class])->group(function () {
 
 });
 
-// ── Webhooks Twilio (publics) ──────────────────────────────────────
-Route::prefix('twilio')->name('twilio.voice.')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])->group(function () {
-    Route::post('/answer',  [TwilioWebhookController::class, 'answer'])->name('answer');
-    Route::post('/respond', [TwilioWebhookController::class, 'respond'])->name('respond');
-    Route::post('/status',  [TwilioWebhookController::class, 'status'])->name('status');
-    Route::post('/amd',     [TwilioWebhookController::class, 'amd'])->name('amd');
-});
+// ── Webhook Telnyx (public, pas de CSRF) ───────────────────────────
+Route::post('/telnyx/webhook', [TelnyxWebhookController::class, 'handle'])
+    ->name('telnyx.webhook')
+    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
